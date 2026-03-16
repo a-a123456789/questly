@@ -2,11 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
 	@Environment(\.appTheme) private var theme
-	@EnvironmentObject private var taskStore: TaskStore
-	@EnvironmentObject private var calendarClient: CalendarClient
-
-	@State private var selectedDate: Date = .now
-	@State private var showingNewTask: DayPart?
+	@ObservedObject var viewModel: HomeViewModel
 
 	var body: some View {
 		ZStack(alignment: .bottom) {
@@ -21,12 +17,12 @@ struct HomeView: View {
 					.padding(.horizontal, 16)
 					.padding(.top, 16)
 
-				ScrollView(.vertical, showsIndicators: false) {
-					VStack(spacing: 24) {
-						ForEach(DayPart.plannerParts) { part in
-							dayPartSection(part)
+					ScrollView(.vertical, showsIndicators: false) {
+						VStack(spacing: 24) {
+							ForEach(viewModel.sections) { section in
+								dayPartSection(section)
+							}
 						}
-					}
 					.padding(.horizontal, 16)
 					.padding(.top, 24)
 					.padding(.bottom, 140)
@@ -42,41 +38,24 @@ struct HomeView: View {
 				.padding(.horizontal, 16)
 				.padding(.bottom, 10)
 		}
-		.onAppear {
-			taskStore.seedIfNeeded(for: selectedDate)
-			guard !isRunningInPreviews else { return }
-			Task { await calendarClient.refresh(for: selectedDate) }
-		}
-		.onChange(of: selectedDate) { _, newValue in
-			guard !isRunningInPreviews else { return }
-			Task { await calendarClient.refresh(for: newValue) }
-		}
-		.sheet(item: $showingNewTask) { part in
-			NewTaskSheet(
-				defaultDayPart: part,
-				date: selectedDate
-			) { draft in
-				taskStore.addTask(
-					title: draft.title,
-					details: draft.details,
-					date: selectedDate,
-					dayPart: draft.dayPart,
-					priority: draft.priority,
-					rewardPoints: draft.rewardPoints
-				)
+			.onAppear {
+				viewModel.loadIfNeeded()
 			}
-			.presentationDetents([.medium])
-		}
+			.sheet(item: $viewModel.newTaskViewModel) { newTaskViewModel in
+				NewTaskSheet(viewModel: newTaskViewModel)
+					.presentationDetents([.medium])
+					.presentationDragIndicator(.hidden)
+			}
 	}
 
 	private var header: some View {
 		HStack(alignment: .top) {
 			VStack(alignment: .leading, spacing: 4) {
-				Text(selectedDate.formatted(.dateTime.weekday(.wide)))
+				Text(viewModel.weekdayText)
 					.font(theme.titleFont)
 					.foregroundStyle(theme.textPrimary)
 
-				Text(selectedDate.formatted(.dateTime.month(.wide).day().year()))
+				Text(viewModel.fullDateText)
 					.font(.system(size: 16, weight: .regular))
 					.foregroundStyle(theme.textSecondary)
 			}
@@ -87,8 +66,8 @@ struct HomeView: View {
 				Text("⚡")
 					.font(.system(size: 14))
 					.baselineOffset(1)
-				Text("1,834")
-					.font(.system(size: 16, weight: .semibold))
+					Text(viewModel.pointsText)
+						.font(.system(size: 16, weight: .semibold))
 			}
 			.foregroundStyle(theme.warning)
 			.padding(.horizontal, 12)
@@ -100,67 +79,65 @@ struct HomeView: View {
 	}
 
 	private var dateStrip: some View {
-		let days = weekFor(date: selectedDate)
-		return ScrollView(.horizontal, showsIndicators: false) {
+		ScrollView(.horizontal, showsIndicators: false) {
 			HStack(spacing: 8) {
-				ForEach(days, id: \.self) { day in
-					let isSelected = Calendar.current.isDate(day, inSameDayAs: selectedDate)
+				ForEach(viewModel.dayItems) { day in
 					VStack(spacing: 4) {
-						Text(day.formatted(.dateTime.weekday(.abbreviated)).uppercased())
+						Text(day.weekdayText)
 							.font(.system(size: 12, weight: .regular))
-							.foregroundStyle(isSelected ? .white : theme.textSecondary)
+							.foregroundStyle(day.isSelected ? .white : theme.textSecondary)
 
-						Text(day.formatted(.dateTime.day()))
+						Text(day.dayText)
 							.font(.system(size: 18, weight: .semibold))
-							.foregroundStyle(isSelected ? .white : theme.textPrimary)
+							.foregroundStyle(day.isSelected ? .white : theme.textPrimary)
 					}
 					.frame(width: 50, height: 64)
-					.background(isSelected ? theme.accent : Color.clear)
+					.background(day.isSelected ? theme.accent : Color.clear)
 					.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 					.contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-					.onTapGesture { selectedDate = day }
+					.onTapGesture {
+						viewModel.selectDate(day.date)
+					}
 				}
 			}
 			.padding(.vertical, 4)
 		}
 	}
 
-	private func dayPartSection(_ part: DayPart) -> some View {
+	private func dayPartSection(_ section: HomeSectionModel) -> some View {
 		VStack(spacing: 12) {
 			HStack {
 				HStack(spacing: 8) {
-					RemoteIcon(url: iconURL(for: part))
+					RemoteIcon(url: section.iconURL)
 						.frame(width: 20, height: 20)
-					Text(part.title)
+					Text(section.title)
 						.font(theme.subtitleFont)
 						.foregroundStyle(theme.textPrimary)
 				}
 
 				Spacer()
 
-				Text(part.timeRangeText)
+				Text(section.timeRangeText)
 					.font(.system(size: 14, weight: .regular))
 					.foregroundStyle(theme.textSecondary)
 			}
 
 			VStack(spacing: 10) {
-				let tasks = taskStore.tasks(for: selectedDate, dayPart: part)
-				let events = calendarClient.eventsByDayPart[part] ?? []
-
-				if !tasks.isEmpty || !events.isEmpty {
-					ForEach(tasks) { item in
-						TaskRow(item: item) {
-							taskStore.toggleDone(item.id)
+				if !section.entries.isEmpty {
+					ForEach(section.entries) { entry in
+						switch entry {
+						case .task(let item):
+							TaskRow(item: item) {
+								viewModel.toggleDone(item.id)
+							}
+						case .event(let event):
+							EventRow(event: event)
 						}
-					}
-
-					ForEach(events.prefix(2), id: \.id) { event in
-						EventRow(event: event)
 					}
 				}
 
 				Button {
-					showingNewTask = part
+					viewModel.presentNewTask(for: section.part)
 				} label: {
 					HStack(spacing: 8) {
 						RemoteIcon(url: plusIconURL)
@@ -185,7 +162,7 @@ struct HomeView: View {
 
 	private var fab: some View {
 		Button {
-			showingNewTask = .morning
+			viewModel.presentNewTask(for: .morning)
 		} label: {
 			ZStack {
 				Circle().fill(theme.accent)
@@ -243,21 +220,11 @@ struct HomeView: View {
 		}
 		.buttonStyle(.plain)
 	}
-
-	private func weekFor(date: Date) -> [Date] {
-		let cal = Calendar.current
-		let start = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)) ?? date
-		return (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
-	}
-
-	private var isRunningInPreviews: Bool {
-		ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-	}
 }
 
 private struct TaskRow: View {
 	@Environment(\.appTheme) private var theme
-	let item: TodoItem
+	let item: HomeTaskRowModel
 	let onToggle: () -> Void
 
 	var body: some View {
@@ -281,21 +248,21 @@ private struct TaskRow: View {
 
 private struct EventRow: View {
 	@Environment(\.appTheme) private var theme
-	let event: PlannerEvent
+	let event: HomeEventRowModel
 
 	var body: some View {
 		HStack(spacing: 10) {
 			Image(systemName: "calendar")
 				.foregroundStyle(theme.textSecondary)
-			VStack(alignment: .leading, spacing: 2) {
-				Text(event.title)
-					.font(theme.bodyFont)
-					.foregroundStyle(theme.textPrimary)
-					.lineLimit(1)
-				Text(timeText)
-					.font(.system(size: 12, weight: .regular))
-					.foregroundStyle(theme.textSecondary)
-			}
+				VStack(alignment: .leading, spacing: 2) {
+					Text(event.title)
+						.font(theme.bodyFont)
+						.foregroundStyle(theme.textPrimary)
+						.lineLimit(1)
+					Text(event.timeText)
+						.font(.system(size: 12, weight: .regular))
+						.foregroundStyle(theme.textSecondary)
+				}
 			Spacer()
 		}
 		.padding(.horizontal, 12)
@@ -304,187 +271,213 @@ private struct EventRow: View {
 		.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 	}
 
-	private var timeText: String {
-		guard !event.isAllDay else { return "All day" }
-		return "\(event.startDate.formatted(.dateTime.hour().minute())) – \(event.endDate.formatted(.dateTime.hour().minute()))"
-	}
-}
-
-private struct NewTaskDraft {
-	var title: String
-	var details: String
-	var dayPart: DayPart
-	var priority: TaskPriority
-	var rewardPoints: TaskRewardPoints
 }
 
 private struct NewTaskSheet: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.appTheme) private var theme
 
-	let defaultDayPart: DayPart
-	let date: Date
-	let onAdd: (NewTaskDraft) -> Void
-
-	@State private var title: String = ""
-	@State private var details: String = ""
-	@State private var dayPart: DayPart
-	@State private var priority: TaskPriority = .medium
-	@State private var rewardPoints: TaskRewardPoints = .p25
-
-	init(defaultDayPart: DayPart, date: Date, onAdd: @escaping (NewTaskDraft) -> Void) {
-		self.defaultDayPart = defaultDayPart
-		self.date = date
-		self.onAdd = onAdd
-		_dayPart = State(initialValue: defaultDayPart)
-	}
+	@ObservedObject var viewModel: NewTaskViewModel
 
 	var body: some View {
-		ZStack(alignment: .top) {
-			theme.surface.ignoresSafeArea()
-			VStack(alignment: .leading, spacing: 18) {
-				Capsule()
-					.fill(Color(red: 0xD1 / 255, green: 0xD5 / 255, blue: 0xDC / 255))
-					.frame(width: 48, height: 4)
-					.frame(maxWidth: .infinity)
-					.padding(.top, 10)
+		VStack(spacing: 0) {
+			ScrollView(.vertical, showsIndicators: false) {
+				VStack(alignment: .leading, spacing: 24) {
+					Capsule()
+						.fill(Color(red: 0xD1 / 255, green: 0xD5 / 255, blue: 0xDC / 255))
+						.frame(width: 48, height: 5)
+						.frame(maxWidth: .infinity)
+						.padding(.top, 12)
 
-				Text("New Task")
-					.font(.system(size: 24, weight: .bold))
-					.foregroundStyle(theme.textPrimary)
-					.padding(.top, 2)
+					Text("New Task")
+						.font(.system(size: 28, weight: .bold))
+						.foregroundStyle(theme.textPrimary)
 
-				field(label: "TITLE") {
-					TextField("What do you need to do?", text: $title)
-				}
+					VStack(alignment: .leading, spacing: 18) {
+						LabeledInput(label: "TITLE") {
+							TextField("What do you need to do?", text: $viewModel.title)
+						}
 
-				field(label: "DESCRIPTION (OPTIONAL)") {
-					TextField("Add details...", text: $details, axis: .vertical)
-						.lineLimit(3, reservesSpace: true)
-				}
+						LabeledInput(label: "DESCRIPTION") {
+							TextField("Add details...", text: $viewModel.description, axis: .vertical)
+								.lineLimit(3, reservesSpace: true)
+						}
 
-				sectionLabel("WHEN")
-				whenGrid
+						SheetSection(label: "WHEN") {
+							LazyVGrid(columns: pillColumns, alignment: .leading, spacing: 12) {
+								ForEach(viewModel.whenOptions) { option in
+									PillButton(
+										title: option.title,
+										iconURL: whenIconURL(for: option),
+										isSelected: viewModel.selectedWhen == option,
+										selectedBackground: theme.accent,
+										unselectedBackground: pillBackgroundColor
+									) {
+										viewModel.selectedWhen = option
+									}
+								}
+							}
+						}
 
-				sectionLabel("PRIORITY")
-				pillRow(items: TaskPriority.allCases, selection: $priority) { $0.title }
+						SheetSection(label: "PRIORITY") {
+							HStack(spacing: 12) {
+								ForEach(viewModel.priorityOptions) { option in
+									PillButton(
+										title: option.title,
+										isSelected: viewModel.selectedPriority == option,
+										selectedBackground: theme.warning,
+										unselectedBackground: pillBackgroundColor
+									) {
+										viewModel.selectedPriority = option
+									}
+								}
+							}
+						}
 
-				sectionLabel("POINTS REWARD")
-				pillRow(items: TaskRewardPoints.allCases, selection: $rewardPoints) { $0.title }
-
-				Spacer(minLength: 0)
-
-				Button {
-					let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-					guard !trimmed.isEmpty else { return }
-					onAdd(
-						NewTaskDraft(
-							title: trimmed,
-							details: details.trimmingCharacters(in: .whitespacesAndNewlines),
-							dayPart: dayPart,
-							priority: priority,
-							rewardPoints: rewardPoints
-						)
-					)
-					dismiss()
-				} label: {
-					HStack(spacing: 10) {
-						Text("+")
-							.font(.system(size: 20, weight: .semibold))
-						Text("Add Task")
-							.font(.system(size: 18, weight: .semibold))
+						SheetSection(label: "POINTS REWARD") {
+							HStack(spacing: 12) {
+								ForEach(viewModel.pointsOptions) { option in
+									PillButton(
+										title: option.title,
+										isSelected: viewModel.selectedPoints == option,
+										selectedBackground: theme.warning,
+										unselectedBackground: pillBackgroundColor
+									) {
+										viewModel.selectedPoints = option
+									}
+								}
+							}
+						}
 					}
-					.foregroundStyle(.white)
-					.frame(maxWidth: .infinity)
-					.frame(height: 60)
-					.background(theme.accent)
-					.clipShape(Capsule())
 				}
-				.buttonStyle(.plain)
-				.padding(.bottom, 6)
+				.padding(.horizontal, 24)
+				.padding(.bottom, 24)
+			}
+
+			PrimaryButton(title: "+ Add Task", isEnabled: viewModel.isSubmissionEnabled) {
+				guard viewModel.addTask() else { return }
+				dismiss()
 			}
 			.padding(.horizontal, 24)
-			.padding(.top, 8)
+			.padding(.top, 16)
+			.padding(.bottom, 20)
+			.background(theme.surface)
+		}
+		.background(theme.surface)
+		.clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+	}
+
+	private var pillColumns: [GridItem] {
+		[
+			GridItem(.flexible(), spacing: 12),
+			GridItem(.flexible(), spacing: 12)
+		]
+	}
+
+	private var pillBackgroundColor: Color {
+		Color(red: 0xF0 / 255, green: 0xF2 / 255, blue: 0xF8 / 255)
+	}
+}
+
+private struct SheetSection<Content: View>: View {
+	@Environment(\.appTheme) private var theme
+	let label: String
+	@ViewBuilder let content: Content
+
+	var body: some View {
+		VStack(alignment: .leading, spacing: 10) {
+			Text(label)
+				.font(.system(size: 12, weight: .semibold))
+				.foregroundStyle(theme.textSecondary)
+				.tracking(0.3)
+
+			content
 		}
 	}
+}
 
-	private func sectionLabel(_ text: String) -> some View {
-		Text(text)
-			.font(.system(size: 12, weight: .semibold))
-			.foregroundStyle(theme.textSecondary)
-			.tracking(0.3)
-	}
+private struct LabeledInput<Content: View>: View {
+	@Environment(\.appTheme) private var theme
+	let label: String
+	@ViewBuilder let content: Content
 
-	private func field<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
-		VStack(alignment: .leading, spacing: 8) {
-			sectionLabel(label)
-			content()
+	var body: some View {
+		SheetSection(label: label) {
+			content
 				.font(.system(size: 16, weight: .regular))
+				.foregroundStyle(theme.textPrimary)
 				.padding(.horizontal, 16)
-				.padding(.vertical, 12)
+				.padding(.vertical, 14)
 				.frame(maxWidth: .infinity, alignment: .leading)
 				.background(Color(red: 0xF8 / 255, green: 0xF9 / 255, blue: 0xFB / 255))
-				.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+				.clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 		}
 	}
+}
 
-	private var whenGrid: some View {
-		VStack(spacing: 8) {
-			HStack(spacing: 8) {
-				whenPill(.morning, iconURL: whenIconMorningURL)
-				whenPill(.midday, iconURL: whenIconMiddayURL)
-				Spacer(minLength: 0)
-			}
-			HStack(spacing: 8) {
-				whenPill(.evening, iconURL: whenIconEveningURL)
-				whenPill(.inbox, iconURL: whenIconInboxURL)
-				Spacer(minLength: 0)
-			}
-		}
-	}
+private struct PillButton: View {
+	@Environment(\.appTheme) private var theme
+	let title: String
+	var iconURL: URL? = nil
+	let isSelected: Bool
+	let selectedBackground: Color
+	let unselectedBackground: Color
+	let action: () -> Void
 
-	private func whenPill(_ part: DayPart, iconURL: URL) -> some View {
-		let selected = (dayPart == part)
-		return Button {
-			dayPart = part
-		} label: {
+	var body: some View {
+		Button(action: action) {
 			HStack(spacing: 8) {
-				RemoteIcon(url: iconURL)
-					.frame(width: 16, height: 16)
-				Text(part.title)
+				if let iconURL {
+					RemoteIcon(url: iconURL)
+						.frame(width: 16, height: 16)
+				}
+
+				Text(title)
 					.font(.system(size: 16, weight: .medium))
+					.lineLimit(1)
+					.minimumScaleFactor(0.9)
 			}
-			.foregroundStyle(selected ? .white : theme.textSecondary)
-			.padding(.horizontal, 16)
-			.frame(height: 40)
-			.background(selected ? theme.accent : Color(red: 0xF0 / 255, green: 0xF2 / 255, blue: 0xF8 / 255))
+			.foregroundStyle(isSelected ? .white : theme.textSecondary)
+			.frame(maxWidth: .infinity)
+			.frame(height: 44)
+			.background(isSelected ? selectedBackground : unselectedBackground)
 			.clipShape(Capsule())
 		}
 		.buttonStyle(.plain)
 	}
+}
 
-	private func pillRow<Item: Identifiable & Hashable>(
-		items: [Item],
-		selection: Binding<Item>,
-		title: @escaping (Item) -> String
-	) -> some View {
-		HStack(spacing: 8) {
-			ForEach(items, id: \.self) { item in
-				let selected = selection.wrappedValue == item
-				Button {
-					selection.wrappedValue = item
-				} label: {
-					Text(title(item))
-						.font(.system(size: 16, weight: .medium))
-						.foregroundStyle(selected ? .white : theme.textSecondary)
-						.frame(maxWidth: .infinity)
-						.frame(height: 40)
-						.background(selected ? theme.warning : Color(red: 0xF0 / 255, green: 0xF2 / 255, blue: 0xF8 / 255))
-						.clipShape(Capsule())
-				}
-				.buttonStyle(.plain)
-			}
+private struct PrimaryButton: View {
+	let title: String
+	let isEnabled: Bool
+	let action: () -> Void
+
+	var body: some View {
+		Button(action: action) {
+			Text(title)
+				.font(.system(size: 18, weight: .semibold))
+				.foregroundStyle(.white)
+				.frame(maxWidth: .infinity)
+				.frame(height: 58)
+				.background(Color(red: 0x5B / 255, green: 0x7B / 255, blue: 0xFF / 255))
+				.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 		}
+		.buttonStyle(.plain)
+		.disabled(!isEnabled)
+		.opacity(isEnabled ? 1 : 0.6)
+	}
+}
+
+private func whenIconURL(for part: DayPart) -> URL {
+	switch part {
+	case .morning:
+		whenIconMorningURL
+	case .midday:
+		whenIconMiddayURL
+	case .evening:
+		whenIconEveningURL
+	case .inbox:
+		whenIconInboxURL
 	}
 }
 
@@ -509,15 +502,6 @@ private struct RemoteIcon: View {
 	}
 }
 
-private func iconURL(for part: DayPart) -> URL {
-	switch part {
-	case .morning: URL(string: "https://www.figma.com/api/mcp/asset/b7f43aeb-86da-4f6d-abc2-889bf25e0d22")!
-	case .midday: URL(string: "https://www.figma.com/api/mcp/asset/ea240abf-4157-4a2e-ada7-8e8aaf60c689")!
-	case .evening: URL(string: "https://www.figma.com/api/mcp/asset/c14557a5-283a-4e78-8771-4ae7f9c154f5")!
-	case .inbox: URL(string: "https://www.figma.com/api/mcp/asset/90131a9e-37e6-4d41-a19c-ec59ab7c4047")!
-	}
-}
-
 private let plusIconURL = URL(string: "https://www.figma.com/api/mcp/asset/a212cdb6-b229-4f56-82bd-34d26f1eec93")!
 private let fabIconURL = URL(string: "https://www.figma.com/api/mcp/asset/db5a8435-7758-40f9-a630-8d5ea97a2158")!
 
@@ -534,22 +518,7 @@ private let whenIconInboxURL = URL(string: "https://www.figma.com/api/mcp/asset/
 
 #if DEBUG
 #Preview("Planner") {
-	let store = TaskStore()
-	let cal = CalendarClient()
-	return HomeView()
-		.environmentObject(store)
-		.environmentObject(cal)
+	HomeView(viewModel: HomeViewModel())
 		.environment(\.appTheme, .default)
 }
 #endif
-
-#Preview {
-    let taskStore = TaskStore()
-    taskStore.seedIfNeeded(for: .now)
-    let calendarClient = CalendarClient()
-
-    return HomeView()
-        .environmentObject(taskStore)
-        .environmentObject(calendarClient)
-        .environment(\.appTheme, .default)
-}

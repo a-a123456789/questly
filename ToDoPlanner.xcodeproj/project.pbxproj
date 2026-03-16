@@ -13,6 +13,7 @@
 		001000000000000000000004 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001000000000000000000104 /* AppTheme.swift */; };
 		001000000000000000000005 /* CalendarClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001000000000000000000105 /* CalendarClient.swift */; };
 		001000000000000000000006 /* TaskStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001000000000000000000106 /* TaskStore.swift */; };
+		D13091452F68673800458415 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13091442F68673800458415 /* HomeViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,7 @@
 		001000000000000000000104 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		001000000000000000000105 /* CalendarClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarClient.swift; sourceTree = "<group>"; };
 		001000000000000000000106 /* TaskStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskStore.swift; sourceTree = "<group>"; };
+		D13091442F68673800458415 /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +57,7 @@
 				001000000000000000000103 /* Models.swift */,
 				001000000000000000000104 /* AppTheme.swift */,
 				001000000000000000000020 /* Info.plist */,
+				D13091442F68673800458415 /* HomeViewModel.swift */,
 			);
 			path = ToDoPlanner;
 			sourceTree = "<group>";
@@ -137,6 +140,7 @@
 			files = (
 				001000000000000000000001 /* ToDoPlannerApp.swift in Sources */,
 				001000000000000000000002 /* HomeView.swift in Sources */,
+				D13091452F68673800458415 /* HomeViewModel.swift in Sources */,
 				001000000000000000000006 /* TaskStore.swift in Sources */,
 				001000000000000000000005 /* CalendarClient.swift in Sources */,
 				001000000000000000000003 /* Models.swift in Sources */,

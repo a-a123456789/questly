@@ -106,3 +106,10 @@ struct PlannerEvent: Identifiable, Hashable {
 	let isAllDay: Bool
 }
 
+struct NewTaskDraft: Hashable {
+	let title: String
+	let details: String
+	let dayPart: DayPart
+	let priority: TaskPriority
+	let rewardPoints: TaskRewardPoints
+}

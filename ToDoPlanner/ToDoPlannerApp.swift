@@ -2,16 +2,12 @@ import SwiftUI
 
 @main
 struct ToDoPlannerApp: App {
-	@StateObject private var taskStore = TaskStore()
-	@StateObject private var calendarClient = CalendarClient()
+	@StateObject private var viewModel = HomeViewModel()
 
 	var body: some Scene {
 		WindowGroup {
-			HomeView()
-				.environmentObject(taskStore)
-				.environmentObject(calendarClient)
+			HomeView(viewModel: viewModel)
 				.environment(\.appTheme, .default)
 		}
 	}
 }
-
