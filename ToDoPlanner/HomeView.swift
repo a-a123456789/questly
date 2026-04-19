@@ -48,6 +48,11 @@ struct HomeView: View {
 					.presentationDetents([.medium])
 					.presentationDragIndicator(.hidden)
 			}
+			.sheet(item: $viewModel.editTaskViewModel) { editTaskViewModel in
+				EditTaskSheet(viewModel: editTaskViewModel)
+					.presentationDetents([.medium])
+					.presentationDragIndicator(.hidden)
+			}
 	}
 
 	private var header: some View {
@@ -132,6 +137,8 @@ struct HomeView: View {
 						case .task(let item):
 							TaskRow(item: item, currentPart: section.part) {
 								viewModel.toggleDone(item.id)
+							} onEdit: {
+								viewModel.presentEditTask(item)
 							} onMove: { dayPart in
 								viewModel.moveTask(item.id, to: dayPart)
 							}
@@ -208,6 +215,7 @@ private struct TaskRow: View {
 	let item: HomeTaskRowModel
 	let currentPart: DayPart
 	let onToggle: () -> Void
+	let onEdit: () -> Void
 	let onMove: (DayPart) -> Void
 	@State private var showingMoveOptions = false
 
@@ -241,7 +249,11 @@ private struct TaskRow: View {
 		.padding(.vertical, 10)
 		.background(item.isDone ? theme.surfaceAlt : theme.surface)
 		.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-		.confirmationDialog("Move Task", isPresented: $showingMoveOptions, titleVisibility: .visible) {
+		.confirmationDialog("Task Actions", isPresented: $showingMoveOptions, titleVisibility: .visible) {
+			Button("Edit Task") {
+				onEdit()
+			}
+
 			ForEach(DayPart.plannerParts.filter { $0 != currentPart }) { part in
 				Button("Move to \(part.title)") {
 					onMove(part)
@@ -418,8 +430,116 @@ private struct NewTaskSheet: View {
 				.padding(.bottom, 24)
 			}
 
-			PrimaryButton(title: "Add Task", isEnabled: viewModel.isSubmissionEnabled) {
+			PrimaryButton(title: "Add Task", iconSystemName: "plus", isEnabled: viewModel.isSubmissionEnabled) {
 				guard viewModel.addTask() else { return }
+				dismiss()
+			}
+			.padding(.horizontal, 24)
+			.padding(.top, 16)
+			.padding(.bottom, 20)
+			.background(theme.surface)
+		}
+		.background(theme.surface)
+		.clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+	}
+
+	private var pillColumns: [GridItem] {
+		[
+			GridItem(.flexible(), spacing: 12),
+			GridItem(.flexible(), spacing: 12),
+		]
+	}
+
+	private var pillBackgroundColor: Color {
+		Color(red: 0xF0 / 255, green: 0xF2 / 255, blue: 0xF8 / 255)
+	}
+}
+
+private struct EditTaskSheet: View {
+	@Environment(\.dismiss) private var dismiss
+	@Environment(\.appTheme) private var theme
+
+	@ObservedObject var viewModel: EditTaskViewModel
+
+	var body: some View {
+		VStack(spacing: 0) {
+			ScrollView(.vertical, showsIndicators: false) {
+				VStack(alignment: .leading, spacing: 24) {
+					Capsule()
+						.fill(Color(red: 0xD1 / 255, green: 0xD5 / 255, blue: 0xDC / 255))
+						.frame(width: 48, height: 5)
+						.frame(maxWidth: .infinity)
+						.padding(.top, 12)
+
+					Text("Edit Task")
+						.font(.system(size: 28, weight: .bold))
+						.foregroundStyle(theme.textPrimary)
+
+					VStack(alignment: .leading, spacing: 18) {
+						LabeledInput(label: "TITLE") {
+							TextField("What do you need to do?", text: $viewModel.title)
+						}
+
+						LabeledInput(label: "DESCRIPTION (OPTIONAL)") {
+							TextField("Add details...", text: $viewModel.description, axis: .vertical)
+								.lineLimit(3, reservesSpace: true)
+						}
+
+						SheetSection(label: "WHEN") {
+							LazyVGrid(columns: pillColumns, alignment: .leading, spacing: 12) {
+								ForEach(viewModel.whenOptions) { option in
+									PillButton(
+										title: option.title,
+										iconURL: whenIconURL(for: option),
+										isSelected: viewModel.selectedWhen == option,
+										selectedBackground: theme.accent,
+										unselectedBackground: pillBackgroundColor
+									) {
+										viewModel.selectedWhen = option
+									}
+								}
+							}
+							.frame(maxWidth: 320)
+							.frame(maxWidth: .infinity, alignment: .center)
+						}
+
+						SheetSection(label: "PRIORITY") {
+							HStack(spacing: 12) {
+								ForEach(viewModel.priorityOptions) { option in
+									PillButton(
+										title: option.title,
+										isSelected: viewModel.selectedPriority == option,
+										selectedBackground: theme.warning,
+										unselectedBackground: pillBackgroundColor
+									) {
+										viewModel.selectedPriority = option
+									}
+								}
+							}
+						}
+
+						SheetSection(label: "POINTS REWARD") {
+							HStack(spacing: 12) {
+								ForEach(viewModel.pointsOptions) { option in
+									PointsPillButton(
+										points: option.rawValue,
+										isSelected: viewModel.selectedPoints == option,
+										selectedBackground: theme.warning,
+										unselectedBackground: pillBackgroundColor
+									) {
+										viewModel.selectedPoints = option
+									}
+								}
+							}
+						}
+					}
+				}
+				.padding(.horizontal, 24)
+				.padding(.bottom, 24)
+			}
+
+			PrimaryButton(title: "Save Changes", iconSystemName: "checkmark", isEnabled: viewModel.isSubmissionEnabled) {
+				guard viewModel.saveTask() else { return }
 				dismiss()
 			}
 			.padding(.horizontal, 24)
@@ -542,13 +662,14 @@ private struct PointsPillButton: View {
 private struct PrimaryButton: View {
 	@Environment(\.appTheme) private var theme
 	let title: String
+	let iconSystemName: String
 	let isEnabled: Bool
 	let action: () -> Void
 
 	var body: some View {
 		Button(action: action) {
 			HStack(spacing: 10) {
-				Image(systemName: "plus")
+				Image(systemName: iconSystemName)
 					.font(.system(size: 18, weight: .semibold))
 
 				Text(title)

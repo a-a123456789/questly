@@ -58,6 +58,25 @@ final class TaskStore: ObservableObject {
 		persistTasks()
 	}
 
+	func updateTask(_ id: UUID, with draft: EditTaskDraft, for date: Date) {
+		guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
+
+		let normalizedTitle = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard !normalizedTitle.isEmpty else { return }
+
+		tasks[idx].title = normalizedTitle
+		tasks[idx].details = draft.details.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+		tasks[idx].priority = draft.priority
+		tasks[idx].rewardPoints = draft.rewardPoints
+
+		if tasks[idx].dayPart != draft.dayPart {
+			tasks[idx].dayPart = draft.dayPart
+			tasks[idx].dueDate = dueDate(for: draft.dayPart, on: date)
+		}
+
+		persistTasks()
+	}
+
 	func moveTask(_ id: UUID, to dayPart: DayPart, for date: Date) {
 		guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
 		tasks[idx].dayPart = dayPart

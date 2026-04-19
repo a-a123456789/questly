@@ -13,7 +13,11 @@ struct HomeDayItem: Identifiable, Hashable {
 struct HomeTaskRowModel: Identifiable, Hashable {
     let id: UUID
     let title: String
+    let details: String?
     let isDone: Bool
+    let dayPart: DayPart
+    let priority: TaskPriority
+    let rewardPoints: TaskRewardPoints
 }
 
 struct HomeEventRowModel: Identifiable, Hashable {
@@ -69,7 +73,7 @@ final class NewTaskViewModel: ObservableObject, Identifiable {
     }
 
     var whenOptions: [DayPart] {
-        DayPart.allCases
+        DayPart.sheetParts
     }
 
     var priorityOptions: [TaskPriority] {
@@ -102,9 +106,69 @@ final class NewTaskViewModel: ObservableObject, Identifiable {
 }
 
 @MainActor
+final class EditTaskViewModel: ObservableObject, Identifiable {
+    let id = UUID()
+    let taskID: UUID
+    private let onSave: (UUID, EditTaskDraft) -> Void
+
+    @Published var title: String
+    @Published var description: String
+    @Published var selectedWhen: DayPart
+    @Published var selectedPriority: TaskPriority
+    @Published var selectedPoints: TaskRewardPoints
+
+    init(task: HomeTaskRowModel, onSave: @escaping (UUID, EditTaskDraft) -> Void) {
+        self.taskID = task.id
+        self.title = task.title
+        self.description = task.details ?? ""
+        self.selectedWhen = task.dayPart
+        self.selectedPriority = task.priority
+        self.selectedPoints = task.rewardPoints
+        self.onSave = onSave
+    }
+
+    var isSubmissionEnabled: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var whenOptions: [DayPart] {
+        DayPart.sheetParts
+    }
+
+    var priorityOptions: [TaskPriority] {
+        TaskPriority.allCases
+    }
+
+    var pointsOptions: [TaskRewardPoints] {
+        TaskRewardPoints.allCases
+    }
+
+    func makeDraft() -> EditTaskDraft? {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return nil }
+
+        return EditTaskDraft(
+            title: trimmedTitle,
+            details: description.trimmingCharacters(in: .whitespacesAndNewlines),
+            dayPart: selectedWhen,
+            priority: selectedPriority,
+            rewardPoints: selectedPoints
+        )
+    }
+
+    @discardableResult
+    func saveTask() -> Bool {
+        guard let draft = makeDraft() else { return false }
+        onSave(taskID, draft)
+        return true
+    }
+}
+
+@MainActor
 final class HomeViewModel: ObservableObject {
     @Published var selectedDate: Date
     @Published var newTaskViewModel: NewTaskViewModel?
+    @Published var editTaskViewModel: EditTaskViewModel?
     @Published private(set) var sections: [HomeSectionModel] = []
     @Published private(set) var persistenceMessage: String?
 
@@ -204,6 +268,12 @@ final class HomeViewModel: ObservableObject {
         syncPersistenceState()
     }
 
+    func editTask(_ id: UUID, with draft: EditTaskDraft) {
+        taskRepository.updateTask(id, with: draft, for: selectedDate)
+        reloadSections()
+        syncPersistenceState()
+    }
+
     func moveTask(_ id: UUID, to dayPart: DayPart) {
         taskRepository.moveTask(id, to: dayPart, for: selectedDate)
         reloadSections()
@@ -217,8 +287,19 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    func presentEditTask(_ task: HomeTaskRowModel) {
+        editTaskViewModel = EditTaskViewModel(task: task) { [weak self] id, draft in
+            self?.editTask(id, with: draft)
+            self?.dismissEditTask()
+        }
+    }
+
     private func dismissNewTask() {
         newTaskViewModel = nil
+    }
+
+    private func dismissEditTask() {
+        editTaskViewModel = nil
     }
 
     private func refreshCalendar(for date: Date) {
@@ -233,7 +314,15 @@ final class HomeViewModel: ObservableObject {
         sections = getPlannerSections.execute(date: selectedDate).map { section in
             let taskEntries = section.tasks.map {
                 HomeSectionEntry.task(
-                    HomeTaskRowModel(id: $0.id, title: $0.title, isDone: $0.isDone)
+                    HomeTaskRowModel(
+                        id: $0.id,
+                        title: $0.title,
+                        details: $0.details,
+                        isDone: $0.isDone,
+                        dayPart: $0.dayPart,
+                        priority: $0.priority,
+                        rewardPoints: $0.rewardPoints
+                    )
                 )
             }
             let eventEntries = section.events.map {

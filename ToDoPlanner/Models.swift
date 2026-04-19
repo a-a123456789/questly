@@ -121,3 +121,11 @@ struct NewTaskDraft: Hashable {
 	let priority: TaskPriority
 	let rewardPoints: TaskRewardPoints
 }
+
+struct EditTaskDraft: Hashable {
+	let title: String
+	let details: String
+	let dayPart: DayPart
+	let priority: TaskPriority
+	let rewardPoints: TaskRewardPoints
+}

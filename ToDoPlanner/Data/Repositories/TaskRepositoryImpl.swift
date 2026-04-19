@@ -27,6 +27,10 @@ final class TaskRepositoryImpl: TaskRepository {
 		)
 	}
 
+	func updateTask(_ id: UUID, with draft: EditTaskDraft, for date: Date) {
+		store.updateTask(id, with: draft, for: date)
+	}
+
 	func toggleDone(_ id: UUID) {
 		store.toggleDone(id)
 	}
