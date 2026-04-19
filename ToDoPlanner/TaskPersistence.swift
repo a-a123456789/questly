@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 struct TaskPersistence {
 	private let fileManager: FileManager
 	private let encoder: JSONEncoder

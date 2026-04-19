@@ -7,6 +7,7 @@ struct PlannerSection: Hashable {
 }
 
 protocol GetPlannerSectionsUseCase {
+	@MainActor
 	func execute(date: Date) -> [PlannerSection]
 }
 
@@ -14,6 +15,7 @@ struct DefaultGetPlannerSectionsUseCase: GetPlannerSectionsUseCase {
 	let taskRepository: TaskRepository
 	let calendarRepository: CalendarRepository
 
+	@MainActor
 	func execute(date: Date) -> [PlannerSection] {
 		DayPart.plannerParts.map { part in
 			PlannerSection(
@@ -24,4 +26,3 @@ struct DefaultGetPlannerSectionsUseCase: GetPlannerSectionsUseCase {
 		}
 	}
 }
-

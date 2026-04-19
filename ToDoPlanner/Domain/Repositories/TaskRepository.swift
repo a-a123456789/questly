@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 protocol TaskRepository {
     var lastPersistenceErrorMessage: String? { get }
     func tasks(for date: Date, dayPart: DayPart) -> [TodoItem]

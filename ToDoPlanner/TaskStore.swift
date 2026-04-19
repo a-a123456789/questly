@@ -7,10 +7,11 @@ final class TaskStore: ObservableObject {
 	@Published private(set) var lastPersistenceErrorMessage: String?
 	private let persistence: TaskPersistence
 
-	init(persistence: TaskPersistence = TaskPersistence()) {
-		self.persistence = persistence
+	init(persistence: TaskPersistence? = nil) {
+		let resolvedPersistence = persistence ?? TaskPersistence()
+		self.persistence = resolvedPersistence
 		do {
-			self.tasks = try persistence.loadTasks()
+			self.tasks = try resolvedPersistence.loadTasks()
 		} catch {
 			self.tasks = []
 			self.lastPersistenceErrorMessage = "Saved tasks could not be restored. Questly started with an empty local list."
