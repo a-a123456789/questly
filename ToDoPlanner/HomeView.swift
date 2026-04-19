@@ -186,30 +186,38 @@ private struct TaskRow: View {
 	let onMove: (DayPart) -> Void
 
 	var body: some View {
-		Button(action: onToggle) {
-			HStack(spacing: 10) {
-				Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
-					.foregroundStyle(item.isDone ? theme.accent : theme.textSecondary)
-				Text(item.title)
-					.font(theme.bodyFont)
-					.foregroundStyle(theme.textPrimary)
-				Spacer()
-			}
-			.padding(.horizontal, 12)
-			.padding(.vertical, 10)
-			.background(theme.surface)
-			.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-		}
-		.buttonStyle(.plain)
-		.contextMenu {
-			ForEach(DayPart.plannerParts.filter { $0 != currentPart }) { part in
-				Button {
-					onMove(part)
-				} label: {
-					Label("Move to \(part.title)", systemImage: partSymbolName(part))
+		HStack(spacing: 10) {
+			Button(action: onToggle) {
+				HStack(spacing: 10) {
+					Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
+						.foregroundStyle(item.isDone ? theme.accent : theme.textSecondary)
+					Text(item.title)
+						.font(theme.bodyFont)
+						.foregroundStyle(theme.textPrimary)
+					Spacer()
 				}
 			}
+			.buttonStyle(.plain)
+
+			Menu {
+				ForEach(DayPart.plannerParts.filter { $0 != currentPart }) { part in
+					Button {
+						onMove(part)
+					} label: {
+						Label("Move to \(part.title)", systemImage: partSymbolName(part))
+					}
+				}
+			} label: {
+				Image(systemName: "ellipsis.circle")
+					.font(.system(size: 18, weight: .semibold))
+					.foregroundStyle(theme.textSecondary)
+					.frame(width: 28, height: 28)
+			}
 		}
+		.padding(.horizontal, 12)
+		.padding(.vertical, 10)
+		.background(theme.surface)
+		.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 	}
 }
 
