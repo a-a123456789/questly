@@ -44,6 +44,8 @@
 		D14B0A702F9B210000BEEF01 /* chevron_right.png in Resources */ = {isa = PBXBuildFile; fileRef = D14B0A6F2F9B210000BEEF01 /* chevron_right.png */; };
 		D14B0A722F9B210000BEEF01 /* inbox_empty.png in Resources */ = {isa = PBXBuildFile; fileRef = D14B0A712F9B210000BEEF01 /* inbox_empty.png */; };
 		D14B0A782F9B220000BEEF01 /* UseCaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D14B0A772F9B220000BEEF01 /* UseCaseTests.swift */; };
+		D14C0A012F9C000000BEEF01 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D14C0A002F9C000000BEEF01 /* Assets.xcassets */; };
+		D14C0A032F9C000000BEEF01 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D14C0A022F9C000000BEEF01 /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -86,7 +88,9 @@
 		D14B0A6D2F9B210000BEEF01 /* planner_evening.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Resources/Icons/planner_evening.png"; sourceTree = "<group>"; };
 		D14B0A6F2F9B210000BEEF01 /* chevron_right.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Resources/Icons/chevron_right.png"; sourceTree = "<group>"; };
 		D14B0A712F9B210000BEEF01 /* inbox_empty.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Resources/Icons/inbox_empty.png"; sourceTree = "<group>"; };
-		D14B0A772F9B220000BEEF01 /* UseCaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToDoPlannerTests/UseCaseTests.swift; sourceTree = "<group>"; };
+		D14B0A772F9B220000BEEF01 /* UseCaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UseCaseTests.swift; sourceTree = "<group>"; };
+		D14C0A002F9C000000BEEF01 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D14C0A022F9C000000BEEF01 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -153,6 +157,8 @@
 				001000000000000000000103 /* Models.swift */,
 				001000000000000000000104 /* AppTheme.swift */,
 				001000000000000000000020 /* Info.plist */,
+				D14C0A022F9C000000BEEF01 /* LaunchScreen.storyboard */,
+				D14C0A002F9C000000BEEF01 /* Assets.xcassets */,
 				D13091442F68673800458415 /* HomeViewModel.swift */,
 				D13A5A7D2F9B1A1E00BEEF01 /* plus.svg.png */,
 				D14B0A5B2F9B210000BEEF01 /* tab_planner.png */,
@@ -296,7 +302,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				INFOPLIST_FILE = "";
+				GENERATE_INFOPLIST_FILE = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ToDoPlanner.app/ToDoPlanner";
 			};
@@ -306,7 +312,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				INFOPLIST_FILE = "";
+				GENERATE_INFOPLIST_FILE = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ToDoPlanner.app/ToDoPlanner";
 			};
@@ -344,6 +350,8 @@
 				D14B0A6E2F9B210000BEEF01 /* planner_evening.png in Resources */,
 				D14B0A702F9B210000BEEF01 /* chevron_right.png in Resources */,
 				D14B0A722F9B210000BEEF01 /* inbox_empty.png in Resources */,
+				D14C0A032F9C000000BEEF01 /* LaunchScreen.storyboard in Resources */,
+				D14C0A012F9C000000BEEF01 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

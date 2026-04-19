@@ -110,6 +110,12 @@ enum TaskRecurrence: String, CaseIterable, Identifiable, Hashable, Codable {
 	}
 }
 
+enum NotificationAuthorizationState: String, Hashable {
+	case notDetermined
+	case authorized
+	case denied
+}
+
 struct TodoItem: Identifiable, Hashable, Codable {
 	let id: UUID
 	var title: String

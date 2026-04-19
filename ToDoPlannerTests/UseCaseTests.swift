@@ -1,6 +1,7 @@
 import XCTest
 @testable import ToDoPlanner
 
+@MainActor
 final class UseCaseTests: XCTestCase {
 	func testGetWeekDates_returnsSevenDays() {
 		let useCase = DefaultGetWeekDatesUseCase()
@@ -31,7 +32,7 @@ final class UseCaseTests: XCTestCase {
 		XCTAssertTrue(sections.contains(where: { $0.part == .inbox }))
 	}
 
-	func testTaskStoreMoveTask_reanchorsMovedTaskToSelectedDate() {
+	func testTaskStoreMoveTask_reanchorsMovedTaskToSelectedDate() throws {
 		let store = TaskStore()
 		let calendar = Calendar.current
 		let sourceDate = Date(timeIntervalSince1970: 1_710_000_000)
@@ -62,6 +63,7 @@ final class UseCaseTests: XCTestCase {
 private final class MockTaskRepository: TaskRepository {
 	var lastPersistenceErrorMessage: String? { nil }
 	func allTasks() -> [TodoItem] { [] }
+	func notificationAuthorizationStatus() async -> NotificationAuthorizationState { .notDetermined }
 
 	func tasks(for date: Date, dayPart: DayPart) -> [TodoItem] {
 		[TodoItem(title: "A", details: nil, dueDate: date, dayPart: dayPart, priority: .medium, rewardPoints: .p25)]

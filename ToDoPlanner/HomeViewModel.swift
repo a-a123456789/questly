@@ -323,6 +323,7 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var sections: [HomeSectionModel] = []
     @Published private(set) var persistenceMessage: String?
     @Published private(set) var insights: HomeInsightsModel = .empty
+    @Published private(set) var notificationAuthorizationStatus: NotificationAuthorizationState = .notDetermined
 
     private let taskRepository: TaskRepository
     private let calendarRepository: CalendarRepository
@@ -395,6 +396,32 @@ final class HomeViewModel: ObservableObject {
         HomeTaskCompletionFilter.allCases
     }
 
+    var notificationPermissionStatusText: String {
+        switch notificationAuthorizationStatus {
+        case .authorized:
+            "Allowed"
+        case .notDetermined:
+            "Not requested"
+        case .denied:
+            "Denied"
+        }
+    }
+
+    var notificationPermissionDescription: String {
+        switch notificationAuthorizationStatus {
+        case .authorized:
+            "Task reminders are enabled for Questly on this device."
+        case .notDetermined:
+            "Turn on reminders while creating or editing a task and iOS will prompt for permission."
+        case .denied:
+            "Reminders are currently blocked. Open iOS Settings and allow notifications for Questly."
+        }
+    }
+
+    var shouldShowNotificationSettingsButton: Bool {
+        notificationAuthorizationStatus == .denied
+    }
+
     var priorityFilterTitle: String {
         priorityFilter?.title ?? "All priorities"
     }
@@ -405,6 +432,7 @@ final class HomeViewModel: ObservableObject {
         taskRepository.seedIfNeeded(for: selectedDate)
         reloadSections(animated: false)
         syncPersistenceState()
+        refreshNotificationAuthorizationStatus()
         refreshCalendar(for: selectedDate)
     }
 
@@ -413,6 +441,7 @@ final class HomeViewModel: ObservableObject {
         taskRepository.seedIfNeeded(for: date)
         reloadSections(animated: false)
         syncPersistenceState()
+        refreshNotificationAuthorizationStatus()
         refreshCalendar(for: date)
     }
 
@@ -420,36 +449,49 @@ final class HomeViewModel: ObservableObject {
         taskRepository.toggleDone(id)
         reloadSections()
         syncPersistenceState()
+        refreshNotificationAuthorizationStatus()
     }
 
     func addTask(_ draft: NewTaskDraft) {
         taskRepository.addTask(draft, for: selectedDate)
         reloadSections()
         syncPersistenceState()
+        refreshNotificationAuthorizationStatus()
     }
 
     func editTask(_ id: UUID, with draft: EditTaskDraft) {
         taskRepository.updateTask(id, with: draft, for: selectedDate)
         reloadSections()
         syncPersistenceState()
+        refreshNotificationAuthorizationStatus()
     }
 
     func deleteTask(_ id: UUID) {
         taskRepository.deleteTask(id)
         reloadSections()
         syncPersistenceState()
+        refreshNotificationAuthorizationStatus()
     }
 
     func resetLocalData() {
         taskRepository.resetLocalData()
         reloadSections()
         syncPersistenceState()
+        refreshNotificationAuthorizationStatus()
     }
 
     func moveTask(_ id: UUID, to dayPart: DayPart) {
         taskRepository.moveTask(id, to: dayPart, for: selectedDate)
         reloadSections()
         syncPersistenceState()
+        refreshNotificationAuthorizationStatus()
+    }
+
+    func refreshNotificationAuthorizationStatus() {
+        Task { [weak self] in
+            guard let self else { return }
+            self.notificationAuthorizationStatus = await self.taskRepository.notificationAuthorizationStatus()
+        }
     }
 
     func presentNewTask(for part: DayPart) {

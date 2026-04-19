@@ -4,6 +4,7 @@ import Foundation
 protocol TaskRepository {
     var lastPersistenceErrorMessage: String? { get }
     func allTasks() -> [TodoItem]
+    func notificationAuthorizationStatus() async -> NotificationAuthorizationState
     func tasks(for date: Date, dayPart: DayPart) -> [TodoItem]
     func addTask(_ draft: NewTaskDraft, for date: Date)
     func updateTask(_ id: UUID, with draft: EditTaskDraft, for date: Date)

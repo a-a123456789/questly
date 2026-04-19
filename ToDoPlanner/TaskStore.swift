@@ -44,6 +44,10 @@ final class TaskStore: ObservableObject {
 		tasks
 	}
 
+	func notificationAuthorizationStatus() async -> NotificationAuthorizationState {
+		await reminderScheduler.authorizationStatus()
+	}
+
 	func addTask(
 		title: String,
 		details: String?,
@@ -270,6 +274,7 @@ private extension String {
 private protocol TaskReminderScheduling {
 	func scheduleReminder(for task: TodoItem)
 	func cancelReminder(for taskID: UUID)
+	func authorizationStatus() async -> NotificationAuthorizationState
 }
 
 private final class LocalTaskReminderScheduler: TaskReminderScheduling {
@@ -313,6 +318,25 @@ private final class LocalTaskReminderScheduler: TaskReminderScheduling {
 		let identifier = taskID.uuidString
 		center.removePendingNotificationRequests(withIdentifiers: [identifier])
 		center.removeDeliveredNotifications(withIdentifiers: [identifier])
+	}
+
+	func authorizationStatus() async -> NotificationAuthorizationState {
+		await withCheckedContinuation { continuation in
+			center.getNotificationSettings { settings in
+				let status: NotificationAuthorizationState
+				switch settings.authorizationStatus {
+				case .authorized, .provisional, .ephemeral:
+					status = .authorized
+				case .notDetermined:
+					status = .notDetermined
+				case .denied:
+					status = .denied
+				@unknown default:
+					status = .denied
+				}
+				continuation.resume(returning: status)
+			}
+		}
 	}
 
 	private func requestAuthorizationIfNeeded(completion: @escaping (Bool) -> Void) {

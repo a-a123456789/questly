@@ -12,6 +12,10 @@ final class TaskRepositoryImpl: TaskRepository {
 		store.lastPersistenceErrorMessage
 	}
 
+	func notificationAuthorizationStatus() async -> NotificationAuthorizationState {
+		await store.notificationAuthorizationStatus()
+	}
+
 	func allTasks() -> [TodoItem] {
 		store.allTasks()
 	}

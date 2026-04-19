@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MoreView: View {
 	@Environment(\.appTheme) private var theme
@@ -115,6 +116,7 @@ private struct MoreRow: View {
 
 private struct SettingsAboutView: View {
 	@Environment(\.appTheme) private var theme
+	@Environment(\.openURL) private var openURL
 	@ObservedObject var homeViewModel: HomeViewModel
 	@State private var showsResetConfirmation = false
 	@State private var resetStatusMessage: String?
@@ -154,6 +156,31 @@ private struct SettingsAboutView: View {
 				}
 			}
 
+			Section("Notifications") {
+				HStack {
+					Text("Status")
+					Spacer()
+					Text(homeViewModel.notificationPermissionStatusText)
+						.foregroundStyle(notificationStatusColor)
+				}
+
+				Text(homeViewModel.notificationPermissionDescription)
+					.font(.footnote)
+					.foregroundStyle(theme.textSecondary)
+
+				if homeViewModel.shouldShowNotificationSettingsButton {
+					Button("Open System Settings") {
+						guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
+						openURL(settingsURL)
+					}
+					.accessibilityHint(Text("Opens iOS settings so you can allow Questly notifications"))
+				}
+
+				Button("Refresh Permission Status") {
+					homeViewModel.refreshNotificationAuthorizationStatus()
+				}
+			}
+
 			Section("More Settings") {
 				Text("Notifications, theme controls, and export options are planned for a future update.")
 					.font(.footnote)
@@ -164,6 +191,9 @@ private struct SettingsAboutView: View {
 		.background(theme.background.ignoresSafeArea())
 		.navigationTitle("Settings")
 		.navigationBarTitleDisplayMode(.inline)
+		.onAppear {
+			homeViewModel.refreshNotificationAuthorizationStatus()
+		}
 		.confirmationDialog(
 			"Reset local data?",
 			isPresented: $showsResetConfirmation,
@@ -183,6 +213,17 @@ private struct SettingsAboutView: View {
 		let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
 		let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
 		return "\(version) (\(build))"
+	}
+
+	private var notificationStatusColor: Color {
+		switch homeViewModel.notificationAuthorizationStatus {
+		case .authorized:
+			theme.accent
+		case .notDetermined:
+			theme.textSecondary
+		case .denied:
+			theme.warning
+		}
 	}
 }
 
