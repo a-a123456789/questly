@@ -221,7 +221,6 @@ private struct TaskRow: View {
 	let onEdit: () -> Void
 	let onDelete: () -> Void
 	let onMove: (DayPart) -> Void
-	@State private var showingMoveOptions = false
 
 	var body: some View {
 		HStack(spacing: 10) {
@@ -242,8 +241,16 @@ private struct TaskRow: View {
 			}
 			.buttonStyle(.plain)
 
-			Button {
-				showingMoveOptions = true
+			Menu {
+				Button("Edit Task") {
+					onEdit()
+				}
+
+				ForEach(DayPart.plannerParts.filter { $0 != currentPart }) { part in
+					Button("Move to \(part.title)") {
+						onMove(part)
+					}
+				}
 			} label: {
 				Image(systemName: "ellipsis.circle")
 					.font(.system(size: 18, weight: .semibold))
@@ -271,17 +278,6 @@ private struct TaskRow: View {
 				Haptics.warning()
 			} label: {
 				Label("Delete", systemImage: "trash")
-			}
-		}
-		.confirmationDialog("Task Actions", isPresented: $showingMoveOptions, titleVisibility: .visible) {
-			Button("Edit Task") {
-				onEdit()
-			}
-
-			ForEach(DayPart.plannerParts.filter { $0 != currentPart }) { part in
-				Button("Move to \(part.title)") {
-					onMove(part)
-				}
 			}
 		}
 	}
