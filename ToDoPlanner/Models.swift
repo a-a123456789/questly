@@ -8,7 +8,7 @@ enum DayPart: String, CaseIterable, Identifiable, Hashable {
 
 	var id: String { rawValue }
 
-	static var plannerParts: [DayPart] { [.morning, .midday, .evening] }
+	static var plannerParts: [DayPart] { [.morning, .midday, .evening, .inbox] }
 	static var sheetParts: [DayPart] { [.morning, .midday, .evening, .inbox] }
 
 	var title: String {

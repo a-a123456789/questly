@@ -25,12 +25,7 @@ final class TaskStore: ObservableObject {
 		priority: TaskPriority,
 		rewardPoints: TaskRewardPoints
 	) {
-		let cal = Calendar.current
-		let due: Date? = {
-			if dayPart == .inbox { return cal.startOfDay(for: date) }
-			let hour = dayPart.hours.lowerBound
-			return cal.date(bySettingHour: hour, minute: 0, second: 0, of: date) ?? date
-		}()
+		let due = dueDate(for: dayPart, on: date)
 		tasks.append(
 			TodoItem(
 				title: title,
@@ -48,25 +43,11 @@ final class TaskStore: ObservableObject {
 		guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
 		tasks[idx].isDone.toggle()
 	}
-    
-	func setDayPart(_ part: DayPart, for id: UUID) {
+
+	func moveTask(_ id: UUID, to dayPart: DayPart, for date: Date) {
 		guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
-
-		let cal = Calendar.current
-		// Use existing dueDate's day when available; otherwise default to today
-		let baseDate = tasks[idx].dueDate ?? Date()
-
-		let newDueDate: Date = {
-			if part == .inbox {
-				return cal.startOfDay(for: baseDate)
-			} else {
-				let day = cal.startOfDay(for: baseDate)
-				return cal.date(bySettingHour: part.hours.lowerBound, minute: 0, second: 0, of: day) ?? day
-			}
-		}()
-
-		tasks[idx].dayPart = part
-		tasks[idx].dueDate = newDueDate
+		tasks[idx].dayPart = dayPart
+		tasks[idx].dueDate = dueDate(for: dayPart, on: date)
 	}
 
 	func seedIfNeeded(for date: Date) {
@@ -74,14 +55,22 @@ final class TaskStore: ObservableObject {
 		addTask(title: "Review schedule", details: nil, date: date, dayPart: .morning, priority: .medium, rewardPoints: .p25)
 		addTask(title: "Gym session", details: nil, date: date, dayPart: .midday, priority: .low, rewardPoints: .p15)
 		addTask(title: "Plan tomorrow", details: nil, date: date, dayPart: .evening, priority: .high, rewardPoints: .p50)
-        addTask(title: "Brain dump", details: nil, date: date, dayPart: .inbox, priority: .medium, rewardPoints: .p25)
+	}
+
+	private func dueDate(for dayPart: DayPart, on date: Date) -> Date {
+		let cal = Calendar.current
+		if dayPart == .inbox {
+			return cal.startOfDay(for: date)
+		}
+
+		let hour = dayPart.hours.lowerBound
+		return cal.date(bySettingHour: hour, minute: 0, second: 0, of: date) ?? date
 	}
 }
-    
+
 private extension String {
 	var nilIfEmpty: String? {
 		let t = trimmingCharacters(in: .whitespacesAndNewlines)
 		return t.isEmpty ? nil : t
 	}
 }
-

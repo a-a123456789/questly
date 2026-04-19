@@ -124,8 +124,10 @@ struct HomeView: View {
 					ForEach(section.entries) { entry in
 						switch entry {
 						case .task(let item):
-							TaskRow(item: item) {
+							TaskRow(item: item, currentPart: section.part) {
 								viewModel.toggleDone(item.id)
+							} onMove: { dayPart in
+								viewModel.moveTask(item.id, to: dayPart)
 							}
 						case .event(let event):
 							EventRow(event: event)
@@ -179,7 +181,9 @@ struct HomeView: View {
 private struct TaskRow: View {
 	@Environment(\.appTheme) private var theme
 	let item: HomeTaskRowModel
+	let currentPart: DayPart
 	let onToggle: () -> Void
+	let onMove: (DayPart) -> Void
 
 	var body: some View {
 		Button(action: onToggle) {
@@ -197,6 +201,15 @@ private struct TaskRow: View {
 			.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 		}
 		.buttonStyle(.plain)
+		.contextMenu {
+			ForEach(DayPart.plannerParts.filter { $0 != currentPart }) { part in
+				Button {
+					onMove(part)
+				} label: {
+					Label("Move to \(part.title)", systemImage: partSymbolName(part))
+				}
+			}
+		}
 	}
 }
 

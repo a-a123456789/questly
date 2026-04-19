@@ -20,6 +20,43 @@ final class UseCaseTests: XCTestCase {
 		XCTAssertEqual(sections.first?.tasks.count, 1)
 		XCTAssertEqual(sections.first?.events.count, 1)
 	}
+
+	func testGetPlannerSections_includesInboxSection() {
+		let taskRepo = MockTaskRepository()
+		let calRepo = MockCalendarRepository()
+		let useCase = DefaultGetPlannerSectionsUseCase(taskRepository: taskRepo, calendarRepository: calRepo)
+
+		let sections = useCase.execute(date: Date())
+
+		XCTAssertTrue(sections.contains(where: { $0.part == .inbox }))
+	}
+
+	func testTaskStoreMoveTask_reanchorsMovedTaskToSelectedDate() {
+		let store = TaskStore()
+		let calendar = Calendar.current
+		let sourceDate = Date(timeIntervalSince1970: 1_710_000_000)
+		let targetDate = calendar.date(byAdding: .day, value: 1, to: sourceDate) ?? sourceDate
+
+		store.addTask(
+			title: "Inbox task",
+			details: nil,
+			date: sourceDate,
+			dayPart: .inbox,
+			priority: .medium,
+			rewardPoints: .p25
+		)
+
+		let originalTask = try XCTUnwrap(store.tasks(for: sourceDate, dayPart: .inbox).first)
+		store.moveTask(originalTask.id, to: .morning, for: targetDate)
+
+		XCTAssertTrue(store.tasks(for: sourceDate, dayPart: .inbox).isEmpty)
+
+		let movedTask = try XCTUnwrap(store.tasks(for: targetDate, dayPart: .morning).first)
+		XCTAssertEqual(movedTask.id, originalTask.id)
+		XCTAssertEqual(movedTask.dayPart, .morning)
+		XCTAssertTrue(calendar.isDate(movedTask.dueDate ?? .distantPast, inSameDayAs: targetDate))
+		XCTAssertEqual(calendar.component(.hour, from: movedTask.dueDate ?? .distantPast), DayPart.morning.hours.lowerBound)
+	}
 }
 
 private final class MockTaskRepository: TaskRepository {
@@ -29,6 +66,7 @@ private final class MockTaskRepository: TaskRepository {
 
 	func addTask(_ draft: NewTaskDraft, for date: Date) {}
 	func toggleDone(_ id: UUID) {}
+	func moveTask(_ id: UUID, to dayPart: DayPart, for date: Date) {}
 	func seedIfNeeded(for date: Date) {}
 }
 
@@ -38,4 +76,3 @@ private final class MockCalendarRepository: CalendarRepository {
 		[PlannerEvent(id: "1", title: "Event", startDate: .now, endDate: .now, isAllDay: false)]
 	}
 }
-

@@ -223,9 +223,9 @@ final class HomeViewModel: ObservableObject {
         taskRepository.addTask(draft, for: selectedDate)
         objectWillChange.send()
     }
-    
-    func setDayPart(_ part: DayPart, for id: UUID) {
-        taskRepository.setDayPart(part, for: id)
+
+    func moveTask(_ id: UUID, to dayPart: DayPart) {
+        taskRepository.moveTask(id, to: dayPart, for: selectedDate)
         objectWillChange.send()
     }
 

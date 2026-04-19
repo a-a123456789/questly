@@ -5,6 +5,5 @@ protocol TaskRepository {
     func addTask(_ draft: NewTaskDraft, for date: Date)
     func toggleDone(_ id: UUID)
     func seedIfNeeded(for date: Date)
-    func setDayPart(_ part: DayPart, for id: UUID)
+    func moveTask(_ id: UUID, to dayPart: DayPart, for date: Date)
 }
-
