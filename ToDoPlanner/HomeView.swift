@@ -184,6 +184,7 @@ private struct TaskRow: View {
 	let currentPart: DayPart
 	let onToggle: () -> Void
 	let onMove: (DayPart) -> Void
+	@State private var showingMoveOptions = false
 
 	var body: some View {
 		HStack(spacing: 10) {
@@ -199,25 +200,27 @@ private struct TaskRow: View {
 			}
 			.buttonStyle(.plain)
 
-			Menu {
-				ForEach(DayPart.plannerParts.filter { $0 != currentPart }) { part in
-					Button {
-						onMove(part)
-					} label: {
-						Label("Move to \(part.title)", systemImage: partSymbolName(part))
-					}
-				}
+			Button {
+				showingMoveOptions = true
 			} label: {
 				Image(systemName: "ellipsis.circle")
 					.font(.system(size: 18, weight: .semibold))
 					.foregroundStyle(theme.textSecondary)
 					.frame(width: 28, height: 28)
 			}
+			.buttonStyle(.plain)
 		}
 		.padding(.horizontal, 12)
 		.padding(.vertical, 10)
 		.background(theme.surface)
 		.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+		.confirmationDialog("Move Task", isPresented: $showingMoveOptions, titleVisibility: .visible) {
+			ForEach(DayPart.plannerParts.filter { $0 != currentPart }) { part in
+				Button("Move to \(part.title)") {
+					onMove(part)
+				}
+			}
+		}
 	}
 }
 
