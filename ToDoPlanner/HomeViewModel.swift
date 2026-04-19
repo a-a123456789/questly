@@ -15,9 +15,11 @@ struct HomeTaskRowModel: Identifiable, Hashable {
     let title: String
     let details: String?
     let isDone: Bool
+    let dueDate: Date?
     let dayPart: DayPart
     let priority: TaskPriority
     let rewardPoints: TaskRewardPoints
+    let reminderDate: Date?
 }
 
 struct HomeEventRowModel: Identifiable, Hashable {
@@ -61,11 +63,20 @@ final class NewTaskViewModel: ObservableObject, Identifiable {
     @Published var selectedWhen: DayPart
     @Published var selectedPriority: TaskPriority = .medium
     @Published var selectedPoints: TaskRewardPoints = .p25
+    @Published var isReminderEnabled: Bool
+    @Published var reminderDate: Date
 
     init(defaultDayPart: DayPart, date: Date, onAdd: @escaping (NewTaskDraft) -> Void) {
         self.selectedWhen = defaultDayPart
         self.date = date
         self.onAdd = onAdd
+        if let defaultReminder = Self.defaultReminderDate(for: defaultDayPart, on: date) {
+            self.isReminderEnabled = true
+            self.reminderDate = defaultReminder
+        } else {
+            self.isReminderEnabled = false
+            self.reminderDate = date
+        }
     }
 
     var isSubmissionEnabled: Bool {
@@ -93,8 +104,45 @@ final class NewTaskViewModel: ObservableObject, Identifiable {
             details: description.trimmingCharacters(in: .whitespacesAndNewlines),
             dayPart: selectedWhen,
             priority: selectedPriority,
-            rewardPoints: selectedPoints
+            rewardPoints: selectedPoints,
+            reminderDate: isReminderEnabled ? reminderDate : nil
         )
+    }
+
+    func selectWhen(_ newPart: DayPart) {
+        let oldPart = selectedWhen
+        selectedWhen = newPart
+
+        let wasUsingOldDefault = {
+            guard let oldDefault = Self.defaultReminderDate(for: oldPart, on: date) else { return false }
+            return Calendar.current.isDate(reminderDate, equalTo: oldDefault, toGranularity: .minute)
+        }()
+
+        if !isReminderEnabled, let defaultReminder = Self.defaultReminderDate(for: newPart, on: date) {
+            reminderDate = defaultReminder
+            return
+        }
+
+        if isReminderEnabled, wasUsingOldDefault {
+            if let defaultReminder = Self.defaultReminderDate(for: newPart, on: date) {
+                reminderDate = defaultReminder
+            } else {
+                isReminderEnabled = false
+            }
+        }
+    }
+
+    func setReminderEnabled(_ enabled: Bool) {
+        isReminderEnabled = enabled
+        guard enabled else { return }
+        if let defaultReminder = Self.defaultReminderDate(for: selectedWhen, on: date) {
+            reminderDate = defaultReminder
+        }
+    }
+
+    private static func defaultReminderDate(for part: DayPart, on date: Date) -> Date? {
+        guard let hour = part.defaultReminderHour else { return nil }
+        return Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: date)
     }
 
     @discardableResult
@@ -116,6 +164,8 @@ final class EditTaskViewModel: ObservableObject, Identifiable {
     @Published var selectedWhen: DayPart
     @Published var selectedPriority: TaskPriority
     @Published var selectedPoints: TaskRewardPoints
+    @Published var isReminderEnabled: Bool
+    @Published var reminderDate: Date
 
     init(task: HomeTaskRowModel, onSave: @escaping (UUID, EditTaskDraft) -> Void) {
         self.taskID = task.id
@@ -124,6 +174,11 @@ final class EditTaskViewModel: ObservableObject, Identifiable {
         self.selectedWhen = task.dayPart
         self.selectedPriority = task.priority
         self.selectedPoints = task.rewardPoints
+        self.isReminderEnabled = task.reminderDate != nil
+        let anchorDate = task.dueDate ?? Date()
+        self.reminderDate = task.reminderDate ?? task.dayPart.defaultReminderHour.flatMap {
+            Calendar.current.date(bySettingHour: $0, minute: 0, second: 0, of: anchorDate)
+        } ?? Date()
         self.onSave = onSave
     }
 
@@ -152,8 +207,46 @@ final class EditTaskViewModel: ObservableObject, Identifiable {
             details: description.trimmingCharacters(in: .whitespacesAndNewlines),
             dayPart: selectedWhen,
             priority: selectedPriority,
-            rewardPoints: selectedPoints
+            rewardPoints: selectedPoints,
+            reminderDate: isReminderEnabled ? reminderDate : nil
         )
+    }
+
+    func selectWhen(_ newPart: DayPart) {
+        let oldPart = selectedWhen
+        selectedWhen = newPart
+
+        let wasUsingOldDefault = {
+            guard let oldDefault = Self.defaultReminderDate(for: oldPart, anchoredTo: reminderDate) else { return false }
+            return Calendar.current.isDate(reminderDate, equalTo: oldDefault, toGranularity: .minute)
+        }()
+
+        if !isReminderEnabled, let defaultReminder = Self.defaultReminderDate(for: newPart, anchoredTo: reminderDate) {
+            reminderDate = defaultReminder
+            return
+        }
+
+        if isReminderEnabled, wasUsingOldDefault {
+            if let defaultReminder = Self.defaultReminderDate(for: newPart, anchoredTo: reminderDate) {
+                reminderDate = defaultReminder
+            } else {
+                isReminderEnabled = false
+            }
+        }
+    }
+
+    func setReminderEnabled(_ enabled: Bool) {
+        let wasEnabled = isReminderEnabled
+        isReminderEnabled = enabled
+        guard enabled, !wasEnabled else { return }
+        if let defaultReminder = Self.defaultReminderDate(for: selectedWhen, anchoredTo: reminderDate) {
+            reminderDate = defaultReminder
+        }
+    }
+
+    private static func defaultReminderDate(for part: DayPart, anchoredTo date: Date) -> Date? {
+        guard let hour = part.defaultReminderHour else { return nil }
+        return Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: date)
     }
 
     @discardableResult
@@ -331,9 +424,11 @@ final class HomeViewModel: ObservableObject {
                         title: $0.title,
                         details: $0.details,
                         isDone: $0.isDone,
+                        dueDate: $0.dueDate,
                         dayPart: $0.dayPart,
                         priority: $0.priority,
-                        rewardPoints: $0.rewardPoints
+                        rewardPoints: $0.rewardPoints,
+                        reminderDate: $0.reminderDate
                     )
                 )
             }

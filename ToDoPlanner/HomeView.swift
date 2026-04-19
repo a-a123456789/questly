@@ -418,13 +418,33 @@ private struct NewTaskSheet: View {
 										selectedBackground: theme.accent,
 										unselectedBackground: pillBackgroundColor
 									) {
-											viewModel.selectedWhen = option
+											viewModel.selectWhen(option)
 										}
 									}
 								}
 								.frame(maxWidth: 320)
 								.frame(maxWidth: .infinity, alignment: .center)
 							}
+
+						SheetSection(label: "REMINDER") {
+							Toggle("Enable reminder", isOn: reminderEnabledBinding)
+								.tint(theme.accent)
+
+							if viewModel.isReminderEnabled {
+								DatePicker(
+									"Reminder time",
+									selection: $viewModel.reminderDate,
+									displayedComponents: [.hourAndMinute]
+								)
+								.datePickerStyle(.compact)
+							}
+
+							if viewModel.selectedWhen == .inbox {
+								Text("Inbox reminders are optional and set manually.")
+									.font(.system(size: 13, weight: .regular))
+									.foregroundStyle(theme.textSecondary)
+							}
+						}
 
 						SheetSection(label: "PRIORITY") {
 							HStack(spacing: 12) {
@@ -485,6 +505,15 @@ private struct NewTaskSheet: View {
 	private var pillBackgroundColor: Color {
 		Color(red: 0xF0 / 255, green: 0xF2 / 255, blue: 0xF8 / 255)
 	}
+
+	private var reminderEnabledBinding: Binding<Bool> {
+		Binding(
+			get: { viewModel.isReminderEnabled },
+			set: { value in
+				viewModel.setReminderEnabled(value)
+			}
+		)
+	}
 }
 
 private struct EditTaskSheet: View {
@@ -527,12 +556,32 @@ private struct EditTaskSheet: View {
 										selectedBackground: theme.accent,
 										unselectedBackground: pillBackgroundColor
 									) {
-										viewModel.selectedWhen = option
+										viewModel.selectWhen(option)
 									}
 								}
 							}
 							.frame(maxWidth: 320)
 							.frame(maxWidth: .infinity, alignment: .center)
+						}
+
+						SheetSection(label: "REMINDER") {
+							Toggle("Enable reminder", isOn: reminderEnabledBinding)
+								.tint(theme.accent)
+
+							if viewModel.isReminderEnabled {
+								DatePicker(
+									"Reminder time",
+									selection: $viewModel.reminderDate,
+									displayedComponents: [.hourAndMinute]
+								)
+								.datePickerStyle(.compact)
+							}
+
+							if viewModel.selectedWhen == .inbox {
+								Text("Inbox reminders are optional and set manually.")
+									.font(.system(size: 13, weight: .regular))
+									.foregroundStyle(theme.textSecondary)
+							}
 						}
 
 						SheetSection(label: "PRIORITY") {
@@ -593,6 +642,15 @@ private struct EditTaskSheet: View {
 
 	private var pillBackgroundColor: Color {
 		Color(red: 0xF0 / 255, green: 0xF2 / 255, blue: 0xF8 / 255)
+	}
+
+	private var reminderEnabledBinding: Binding<Bool> {
+		Binding(
+			get: { viewModel.isReminderEnabled },
+			set: { value in
+				viewModel.setReminderEnabled(value)
+			}
+		)
 	}
 }
 

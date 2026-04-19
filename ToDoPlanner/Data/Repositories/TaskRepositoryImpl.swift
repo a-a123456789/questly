@@ -23,7 +23,8 @@ final class TaskRepositoryImpl: TaskRepository {
 			date: date,
 			dayPart: draft.dayPart,
 			priority: draft.priority,
-			rewardPoints: draft.rewardPoints
+			rewardPoints: draft.rewardPoints,
+			reminderDate: draft.reminderDate
 		)
 	}
 

@@ -38,6 +38,19 @@ enum DayPart: String, CaseIterable, Identifiable, Hashable, Codable {
 		case .inbox: 0..<24
 		}
 	}
+
+	var defaultReminderHour: Int? {
+		switch self {
+		case .morning:
+			8
+		case .midday:
+			13
+		case .evening:
+			18
+		case .inbox:
+			nil
+		}
+	}
 }
 
 enum TaskPriority: String, CaseIterable, Identifiable, Hashable, Codable {
@@ -84,6 +97,7 @@ struct TodoItem: Identifiable, Hashable, Codable {
 	var dayPart: DayPart
 	var priority: TaskPriority
 	var rewardPoints: TaskRewardPoints
+	var reminderDate: Date?
 
 	init(
 		id: UUID = UUID(),
@@ -93,7 +107,8 @@ struct TodoItem: Identifiable, Hashable, Codable {
 		dueDate: Date? = nil,
 		dayPart: DayPart = .morning,
 		priority: TaskPriority = .medium,
-		rewardPoints: TaskRewardPoints = .p25
+		rewardPoints: TaskRewardPoints = .p25,
+		reminderDate: Date? = nil
 	) {
 		self.id = id
 		self.title = title
@@ -103,6 +118,7 @@ struct TodoItem: Identifiable, Hashable, Codable {
 		self.dayPart = dayPart
 		self.priority = priority
 		self.rewardPoints = rewardPoints
+		self.reminderDate = reminderDate
 	}
 }
 
@@ -120,6 +136,7 @@ struct NewTaskDraft: Hashable {
 	let dayPart: DayPart
 	let priority: TaskPriority
 	let rewardPoints: TaskRewardPoints
+	let reminderDate: Date?
 }
 
 struct EditTaskDraft: Hashable {
@@ -128,4 +145,5 @@ struct EditTaskDraft: Hashable {
 	let dayPart: DayPart
 	let priority: TaskPriority
 	let rewardPoints: TaskRewardPoints
+	let reminderDate: Date?
 }
